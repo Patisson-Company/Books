@@ -16,3 +16,4 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'books.settings')
 application = get_asgi_application()
 
 # vasya
+#hello
