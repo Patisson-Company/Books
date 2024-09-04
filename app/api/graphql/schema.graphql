@@ -1,0 +1,64 @@
+type Book {
+    id: ID!
+    title: String!
+    publisher: String
+    publishedDate: String
+    description: String
+    pageCount: Int
+    maturityRating: String
+    smallThumbnail: String
+    thumbnail: String
+    language: String
+    authors: [Author]
+    categories: [Category]
+}
+
+type Author {
+    name: String!
+    books: [Book]
+}
+
+type Category {
+    name: String!
+    books: [Book]
+}
+
+type Query {
+    books(
+        ids: [ID],
+        publishers: [String],
+        exact_publishedDate: String,
+        from_publishedDate: String,
+        to_publishedDate: String,
+        exact_pageCount: Int,
+        from_pageCount: Int,
+        to_pageCount: Int,
+        maturityRaiting: String,
+        languages: [String],
+        limit: Int
+    ): [Book]
+
+    booksDeep(
+        ids: [ID],
+        publishers: [String],
+        exact_publishedDate: String,
+        from_publishedDate: String,
+        to_publishedDate: String,
+        exact_pageCount: Int,
+        from_pageCount: Int,
+        to_pageCount: Int,
+        maturityRaiting: String,
+        languages: [String],
+        authors: [String],
+        categories: [String],
+        limit: Int
+    ): [Book]
+
+    authors(
+        names: [String]
+    ): [Author]
+
+    categories(
+        names: [String]
+    ): [Category]
+}
