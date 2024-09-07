@@ -14,15 +14,15 @@ database = Database(DATABASE_URL)
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
 Base = declarative_base()
 
-async_session = sessionmaker(
-    bind=engine,
+async_session = sessionmaker(  # type: ignore[reportCallIssue]
+    bind=engine,   # type: ignore[reportArgumentType]
     class_=AsyncSession,
     expire_on_commit=False
 )
 
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    async with async_session() as session:
+    async with async_session() as session:  # type: ignore[reportGeneralTypeIssues]
         yield session
         
 def _db_init():

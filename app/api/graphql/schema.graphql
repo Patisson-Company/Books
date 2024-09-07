@@ -23,6 +23,25 @@ type Category {
     books: [Book]
 }
 
+type Review {
+    id: ID!
+    user_id: String!
+    book: Book!
+    stars: Int!
+    comment: String
+    actual: Boolean!
+}
+
+type Error {
+    error: String!
+    extra: String
+}
+
+type ReviewResponse {
+  success: Boolean!
+  errors: [Error]
+}
+
 type Query {
     books(
         ids: [ID],
@@ -30,6 +49,7 @@ type Query {
         exact_publishedDate: String,
         from_publishedDate: String,
         to_publishedDate: String,
+        like_description: String,
         exact_pageCount: Int,
         from_pageCount: Int,
         to_pageCount: Int,
@@ -44,6 +64,7 @@ type Query {
         exact_publishedDate: String,
         from_publishedDate: String,
         to_publishedDate: String,
+        like_description: String,
         exact_pageCount: Int,
         from_pageCount: Int,
         to_pageCount: Int,
@@ -61,4 +82,46 @@ type Query {
     categories(
         names: [String]
     ): [Category]
+
+    reviews(
+        ids: [ID],
+        user_ids: [String],
+        stars: [Int],
+        comments: [String],
+        like_comment: String,
+        actual: Boolean,
+        limit: Int
+    ): [Review]
+
+    reviewsDeep(
+        ids: [ID],
+        user_ids: [String],
+        books: [String],
+        from_stars: Int,
+        before_stars: Int,
+        like_comment: String,
+        actual: Boolean,
+        limit: Int
+    ): [Review]
+}
+
+type Mutation {
+    createReview(
+        user_id: String!, 
+        book_id: ID!, 
+        stars: Int!, 
+        comment: String
+    ): ReviewResponse
+
+    updateReview(
+        user_id: String!, 
+        book_id: ID!, 
+        stars: Int!, 
+        comment: String
+    ): ReviewResponse
+
+    deleteReview(
+        user_id: String!, 
+        book_id: ID!
+    ): ReviewResponse
 }

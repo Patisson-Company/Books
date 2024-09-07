@@ -2,6 +2,7 @@ from collections.abc import Iterable
 from typing import Any, Optional, Self
 
 from sqlalchemy import Column, Select
+from sqlalchemy.orm import InstrumentedAttribute
 
 
 class Stmt:
@@ -32,7 +33,7 @@ class Stmt:
         return self
       
       
-    def lt_filter(self, column: Column, op: Optional[Any]) -> Self:
+    def gt_filter(self, column: Column, op: Optional[Any]) -> Self:
         '>'
         if op: self.stmt = self.stmt.filter(column > op) if op else self.stmt
         return self
@@ -50,10 +51,16 @@ class Stmt:
         return self
     
     
-    def con_model_filter(self, column: Column, ops: Optional[Iterable[Any]]) -> Self:
+    def con_model_filter(self, column: InstrumentedAttribute[Any], ops: Optional[Iterable[Any]]) -> Self:
         '"in" for relationship'
         if ops:
             self.stmt = self.stmt.filter(column.any(column.property.mapper.class_.name.in_(ops)))
+        return self
+    
+    
+    def like_filter(self, column: Column, op: Optional[Iterable[Any]]) -> Self:
+        'LIKE'
+        if op: self.stmt = self.stmt.filter(column.like(op))
         return self
     
     

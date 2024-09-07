@@ -18,7 +18,7 @@ def selected_fields(info: GraphQLResolveInfo, model) -> list[InstrumentedAttribu
 
 def _fields_from_selections(
     info: GraphQLResolveInfo, selections: Iterable[SelectionNode]
-) -> set[str]:
+) -> list[str]:
     names: list[str] = []
     for selection in selections:
         match selection:

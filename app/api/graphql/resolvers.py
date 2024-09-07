@@ -1,45 +1,49 @@
 from typing import Optional
 
+import patisson_errors
 from api.graphql._selected_fields import selected_fields
 from api.graphql._stmt_filters import Stmt
-from ariadne import QueryType
-from db.models import Author, Book, Category
+from ariadne import MutationType, QueryType
+from db.models import Author, Book, Category, Review, UniquenessError
 from graphql import GraphQLResolveInfo
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 
 query = QueryType()
-
+mutation = MutationType()
 
 @query.field("books")
 async def books(_, info: GraphQLResolveInfo, 
-                id: Optional[list[str]] = None,
-                publisher: Optional[list[str]] = None, 
+                ids: Optional[list[str]] = None,
+                publishers: Optional[list[str]] = None, 
                 exact_publishedDate: Optional[str] = None,
                 from_publishedDate: Optional[str] = None,
                 before_publishedDate: Optional[str] = None,
+                like_description: Optional[str] = None,
                 exact_pageCount: Optional[int] = None,
                 from_pageCount: Optional[int] = None,
                 before_pageCount: Optional[int] = None,
                 maturityRaiting: Optional[str] = None,
-                language: Optional[list[str]] = None,
+                languages: Optional[list[str]] = None,
                 limit: Optional[int] = 10):
     db: AsyncSession = info.context["db"]
     stmt = (
         Stmt(
             select(*selected_fields(info, Book))
             )
-        .con_filter(Book.id, id)
-        .con_filter(Book.publisher, publisher)
+        .con_filter(Book.id, ids)
+        .con_filter(Book.publisher, publishers)
         .eq_filter(Book.publishedDate, exact_publishedDate)
         .gte_filter(Book.publishedDate, from_publishedDate)
         .lte_filter(Book.publishedDate, before_publishedDate)
+        .like_filter(Book.description, like_description)
         .eq_filter(Book.pageCount, exact_pageCount)
         .gte_filter(Book.pageCount, from_pageCount)
         .lte_filter(Book.pageCount, before_pageCount)
         .eq_filter(Book.maturityRating, maturityRaiting)
-        .con_filter(Book.language, language)
+        .con_filter(Book.language, languages)
         .limit(limit)
     )
     result = await db.execute(stmt())
@@ -53,6 +57,7 @@ async def books_deep(_, info: GraphQLResolveInfo,
                 exact_publishedDate: Optional[str] = None,
                 from_publishedDate: Optional[str] = None,
                 before_publishedDate: Optional[str] = None,
+                like_description: Optional[str] = None,
                 exact_pageCount: Optional[int] = None,
                 from_pageCount: Optional[int] = None,
                 before_pageCount: Optional[int] = None,
@@ -75,6 +80,7 @@ async def books_deep(_, info: GraphQLResolveInfo,
         .eq_filter(Book.publishedDate, exact_publishedDate)
         .gte_filter(Book.publishedDate, from_publishedDate)
         .lte_filter(Book.publishedDate, before_publishedDate)
+        .like_filter(Book.description, like_description)
         .eq_filter(Book.pageCount, exact_pageCount)
         .gte_filter(Book.pageCount, from_pageCount)
         .lte_filter(Book.pageCount, before_pageCount)
@@ -126,4 +132,213 @@ async def categories(_, info: GraphQLResolveInfo,
     return result.scalars().unique().all()
 
 
-resolvers = [query]
+@query.field("reviews")
+async def reviews(_, info: GraphQLResolveInfo, 
+                ids: Optional[list[str]] = None,
+                user_ids: Optional[list[str]] = None,
+                from_stars: Optional[int] = None,
+                before_stars: Optional[int] = None,
+                comment: Optional[str] = None,
+                actual: Optional[bool] = None,
+                limit: Optional[int] = 10):
+    db: AsyncSession = info.context["db"]
+    stmt = (
+        Stmt(
+            select(*selected_fields(info, Review))
+            )
+        .con_filter(Review.id, ids)
+        .con_filter(Review.user_id, user_ids)
+        .gte_filter(Review.stars, from_stars)
+        .lte_filter(Review.stars, before_stars)
+        .like_filter(Review.comment, comment)
+        .con_filter(Review.actual, [actual])
+        .limit(limit)
+    )
+    result = await db.execute(stmt())
+    return result.fetchall()
+
+
+@query.field("reviewsDeep")
+async def reviews_deep(_, info: GraphQLResolveInfo, 
+                ids: Optional[list[str]] = None,
+                user_ids: Optional[list[str]] = None,
+                from_stars: Optional[int] = None,
+                before_stars: Optional[int] = None,
+                comment: Optional[str] = None,
+                books: Optional[list[str]] = None,
+                actual: Optional[bool] = None,
+                limit: Optional[int] = 10):
+    db: AsyncSession = info.context["db"]
+    stmt = (
+        Stmt(
+            select(Review)
+            )
+        .con_filter(Review.id, ids)
+        .con_filter(Review.user_id, user_ids)
+        .gte_filter(Review.stars, from_stars)
+        .lte_filter(Review.stars, before_stars)
+        .like_filter(Review.comment, comment)
+        .con_model_filter(Review.book, books)
+        .con_filter(Review.actual, [actual])
+        .limit(limit)
+    )
+    result = await db.execute(stmt())
+    return result.scalars().unique().all()
+
+
+@mutation.field("createReview")
+async def create_review(_, info: GraphQLResolveInfo, 
+                        user_id: str, book_id: str, stars: int, 
+                        comment: Optional[str] = None):
+    db: AsyncSession = info.context["db"]
+    try:
+        new_review = Review(user_id=user_id, book_id=book_id, 
+                            stars=stars, comment=comment)
+        
+        # checking the uniqueness of the review
+        stmt = (
+            Stmt(
+                select(Review)
+                )
+            .con_filter(Review.user_id, [user_id])
+            .con_filter(Review.book_id, [book_id])
+            .con_filter(Review.actual, [True])
+        )
+        result = await db.execute(stmt())
+        if result.scalars().all():
+            raise UniquenessError
+        
+        db.add(new_review)
+        await db.commit()
+        return {"success": True}
+    
+    except IntegrityError:
+        await db.rollback()
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+            extra=f'The book ({book_id}) was not found'
+        ).model_dump()]}
+        
+    except SQLAlchemyError as e:
+        await db.rollback()
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+            extra=str(e)
+        ).model_dump()]}
+ 
+    except UniquenessError:
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+            extra=f'a review on this book ({book_id}) from this user ({user_id}) already exists'
+        ).model_dump()]}
+    
+    except ValueError as e:  # sqlalchemy model validators
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+            extra=str(e)
+        ).model_dump()]}
+        
+
+@mutation.field("updateReview")
+async def update_review(_, info: GraphQLResolveInfo, 
+                        user_id: str, book_id: str, stars: int, 
+                        comment: Optional[str] = None):
+    db: AsyncSession = info.context["db"]
+    try:
+        new_review = Review(user_id=user_id, book_id=book_id, 
+                            stars=stars, comment=comment)
+        
+        stmt = (
+            Stmt(
+                select(Review)
+                )
+            .con_filter(Review.user_id, [user_id])
+            .con_filter(Review.book_id, [book_id])
+            .con_filter(Review.actual, [True])
+        )
+        result = await db.execute(stmt())
+        not_actual_review = result.scalar_one_or_none()
+        if not not_actual_review:
+            raise UniquenessError
+        not_actual_review.actual = False
+        
+        db.add(new_review)        
+        await db.commit()
+        return {"success": True}
+    
+    except IntegrityError:
+        await db.rollback()
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+            extra=f'The book ({book_id}) was not found'
+        ).model_dump()]}
+        
+    except SQLAlchemyError as e:
+        await db.rollback()
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+            extra=str(e)
+        ).model_dump()]}
+ 
+    except UniquenessError:
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+            extra=f'a review on this book ({book_id}) from this user ({user_id}) does not exist or is not active'
+        ).model_dump()]}
+    
+    except ValueError as e:  # sqlalchemy model validators
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+            extra=str(e)
+        ).model_dump()]}
+        
+
+@mutation.field("deleteReview")
+async def delete_review(_, info: GraphQLResolveInfo, 
+                        user_id: str, book_id: str,):
+    db: AsyncSession = info.context["db"]
+    try:        
+        stmt = (
+            Stmt(
+                select(Review)
+                )
+            .con_filter(Review.user_id, [user_id])
+            .con_filter(Review.book_id, [book_id])
+            .con_filter(Review.actual, [True])
+        )
+        result = await db.execute(stmt())
+        not_actual_review = result.scalar_one_or_none()
+        if not not_actual_review:
+            raise UniquenessError
+        not_actual_review.actual = False
+        await db.commit()
+        return {"success": True}
+    
+    except IntegrityError:
+        await db.rollback()
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+            extra=f'The book ({book_id}) was not found'
+        ).model_dump()]}
+        
+    except SQLAlchemyError as e:
+        await db.rollback()
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+            extra=str(e)
+        ).model_dump()]}
+ 
+    except UniquenessError:
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+            extra=f'a review on this book ({book_id}) from this user ({user_id}) does not exist or is not active'
+        ).model_dump()]}
+    
+    except ValueError as e:  # sqlalchemy model validators
+        return {"success": False, "errors": [patisson_errors.ErrorSchema(
+            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+            extra=str(e)
+        ).model_dump()]}
+
+
+resolvers = [query, mutation]

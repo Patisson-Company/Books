@@ -23,14 +23,14 @@ trace.set_tracer_provider(
     )
 )
 jaeger_exporter = JaegerExporter()
-trace.get_tracer_provider().add_span_processor(
+trace.get_tracer_provider().add_span_processor(  # type: ignore[reportAttributeAccessIssue]
     BatchSpanProcessor(jaeger_exporter)
 )
 
 
 app = FastAPI(title=SERVICE_NAME)
 FastAPIInstrumentor.instrument_app(app)
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)  # type: ignore[reportArgumentType]
 
 
 @app.post("/graphql")
@@ -46,7 +46,7 @@ async def graphql_server(request: Request):
     return result
 
 graphql_app = GraphQL(schema, debug=True)
-app.add_route("/graphql", graphql_app)
+app.add_route("/graphql", graphql_app)  # type: ignore[reportArgumentType]
 
 
 if __name__ == "__main__":
