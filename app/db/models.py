@@ -23,7 +23,8 @@ book_categories = Table('book_categories', Base.metadata,
 class Book(Base):
     __tablename__ = 'books'
     
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True, default=ulid)
+    google_id = Column(String, index=True)
     title = Column(String, nullable=False, index=True)
     publisher = Column(String)
     publishedDate = Column(String)

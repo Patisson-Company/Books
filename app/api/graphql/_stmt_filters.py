@@ -17,25 +17,25 @@ class Stmt:
         
     def lte_filter(self, column: Column, op: Optional[Any]) -> Self:
         '<='
-        if op: self.stmt = self.stmt.filter(column <= op) if op else self.stmt
+        if op: self.stmt = self.stmt.filter(column <= op)
         return self
         
         
     def gte_filter(self, column: Column, op: Optional[Any]) -> Self:
         '>='
-        if op: self.stmt = self.stmt.filter(column >= op) if op else self.stmt
+        if op: self.stmt = self.stmt.filter(column >= op)
         return self
         
         
     def lt_filter(self, column: Column, op: Optional[Any]) -> Self:
         '<'
-        if op: self.stmt = self.stmt.filter(column < op) if op else self.stmt
+        if op: self.stmt = self.stmt.filter(column < op)
         return self
       
       
     def gt_filter(self, column: Column, op: Optional[Any]) -> Self:
         '>'
-        if op: self.stmt = self.stmt.filter(column > op) if op else self.stmt
+        if op: self.stmt = self.stmt.filter(column > op)
         return self
         
         
@@ -64,6 +64,18 @@ class Stmt:
         return self
     
     
+    def ordered_by(self, column: Optional[Column]) -> Self:
+        if column is not None:
+            self.stmt = self.stmt.order_by(column) 
+        return self
+    
+    
     def limit(self, num: Optional[int]) -> Self:
-        self.stmt = self.stmt.limit(num) if num else self.stmt
+        if num: self.stmt = self.stmt.limit(num)
         return self    
+    
+    
+    def offset(self, num: Optional[int]) -> Self:
+        if num: self.stmt = self.stmt.offset(num) 
+        return self
+    

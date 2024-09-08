@@ -1,5 +1,6 @@
 type Book {
     id: ID!
+    google_id: String!
     title: String!
     publisher: String
     publishedDate: String
@@ -45,6 +46,7 @@ type ReviewResponse {
 type Query {
     books(
         ids: [ID],
+        google_ids: [String],
         publishers: [String],
         exact_publishedDate: String,
         from_publishedDate: String,
@@ -55,11 +57,14 @@ type Query {
         to_pageCount: Int,
         maturityRaiting: String,
         languages: [String],
-        limit: Int
+        offset: Int,
+        limit: Int,
+        search: [String]
     ): [Book]
 
     booksDeep(
         ids: [ID],
+        google_ids: [String],
         publishers: [String],
         exact_publishedDate: String,
         from_publishedDate: String,
@@ -72,15 +77,22 @@ type Query {
         languages: [String],
         authors: [String],
         categories: [String],
-        limit: Int
+        limit: Int,
+        search: [String]
     ): [Book]
 
     authors(
-        names: [String]
+        names: [String],
+        offset: Int,
+        limit: Int,
+        search: [String]
     ): [Author]
 
     categories(
-        names: [String]
+        names: [String],
+        offset: Int,
+        limit: Int,
+        search: [String]
     ): [Category]
 
     reviews(
@@ -90,6 +102,7 @@ type Query {
         comments: [String],
         like_comment: String,
         actual: Boolean,
+        offset: Int,
         limit: Int
     ): [Review]
 
@@ -101,6 +114,7 @@ type Query {
         before_stars: Int,
         like_comment: String,
         actual: Boolean,
+        offset: Int,
         limit: Int
     ): [Review]
 }
