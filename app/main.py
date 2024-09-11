@@ -1,4 +1,7 @@
+from api.graphql.resolvers import resolvers
+from ariadne import load_schema_from_path, make_executable_schema
 from core import config
+from db.base import get_session
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from opentelemetry import trace
@@ -8,10 +11,7 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from patisson_errors.fastapi import validation_exception_handler
-from ariadne import load_schema_from_path, make_executable_schema, graphql
-from ariadne.asgi import GraphQL
-from api.graphql.resolvers import resolvers
-from db.base import get_session
+from patisson_graphql.fastapi_handlers.api import graphql_server
 
 type_defs = load_schema_from_path("app/api/graphql/schema.graphql")
 schema = make_executable_schema(type_defs, resolvers)
@@ -34,20 +34,14 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler) 
 
 
 @app.post("/graphql")
-async def graphql_server(request: Request):
-    data = await request.json()
-    async with get_session() as session:
-        success, result = await graphql(
-            schema,
-            data,
-            context_value={"db": session}, 
-            debug=True,
-        )
-    return result
-
-graphql_app = GraphQL(schema, debug=True)
-app.add_route("/graphql", graphql_app)  # type: ignore[reportArgumentType]
-
+async def graphql_route(request: Request):
+    return await graphql_server(
+        request=request, 
+        schema=schema, 
+        session_gen=get_session()
+    )
+    
+app.add_route("/graphql", graphql_route)   # type: ignore[reportArgumentType]
 
 if __name__ == "__main__":
     import uvicorn

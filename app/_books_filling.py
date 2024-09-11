@@ -34,7 +34,7 @@ async def _add_category(session: AsyncSession, name: str):
 
 async def _add_book(session: AsyncSession, book_data: dict):
     try:
-        volume_info = book_data.get("volumeInfo", {})
+        volume_info: dict = book_data.get("volumeInfo", {})
         book_id = book_data.get("id")
         existing_book = await session.execute(select(Book).filter_by(google_id=book_id))
         if existing_book.scalars().first():
@@ -78,7 +78,7 @@ async def _fetch_books_data(session: aiohttp.ClientSession, query: str):
     return books_data
 
 
-async def _process_query(query: str, queue: Queue):
+async def _process_query(query: str, queue: Queue) -> None:
     async with aiohttp.ClientSession() as client_session:
         books_data = await _fetch_books_data(client_session, query)
         for book_data in books_data:
@@ -105,7 +105,14 @@ async def _adding_books_by_authors(session: Optional[AsyncSession] = None):
     async with get_session() as session:
         result = await session.execute(select(Author.name))
         authors = result.scalars().unique().all()
-        await filling_db(authors)
+        await filling_db([f'inauthor:{author}' for author in authors])
+        
+
+async def _adding_books_by_categories(session: Optional[AsyncSession] = None):
+    async with get_session() as session:
+        result = await session.execute(select(Category.name))
+        categories = result.scalars().unique().all()
+        await filling_db([f'subject:{category}' for category in categories])
         
 
 async def filling_db(queries: Sequence[str], session: Optional[AsyncSession] = None):
@@ -118,10 +125,22 @@ async def filling_db(queries: Sequence[str], session: Optional[AsyncSession] = N
     await db_task
 
 
+async def filling_review(session: Optional[AsyncSession] = None):
+    async def body(session: AsyncSession):
+        pass  # !
+            
+    if session:
+        await body(session)  
+    else:
+        async with get_session() as session:
+            await body(session)
+
+
 async def main(queries: Sequence):
     await filling_db(queries)
     await _adding_books_by_authors()
-    
+    await _adding_books_by_categories()
+    await filling_review()
     
 if __name__ == "__main__":
     english_alphabet = string.ascii_lowercase

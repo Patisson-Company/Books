@@ -2,8 +2,6 @@ from typing import Optional
 
 import patisson_errors
 from _books_filling import filling_db
-from api.graphql._selected_fields import selected_fields
-from api.graphql._stmt_filters import Stmt
 from ariadne import MutationType, QueryType
 from db.models import Author, Book, Category, Review, UniquenessError
 from graphql import GraphQLResolveInfo
@@ -11,14 +9,18 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
-
+from patisson_graphql.stmt_filter import Stmt
+from patisson_graphql.selected_fields import selected_fields
 
 query = QueryType()
 mutation = MutationType()
 
+
 @query.field("books")
 async def books(_, info: GraphQLResolveInfo, 
                 ids: Optional[list[str]] = None,
+                titles: Optional[list[str]] = None,
+                like_title: Optional[str] = None,
                 publishers: Optional[list[str]] = None, 
                 exact_publishedDate: Optional[str] = None,
                 from_publishedDate: Optional[str] = None,
@@ -39,6 +41,8 @@ async def books(_, info: GraphQLResolveInfo,
             select(*selected_fields(info, Book))
             )
         .con_filter(Book.id, ids)
+        .con_filter(Book.title, titles)
+        .like_filter(Book.title, like_title)
         .con_filter(Book.publisher, publishers)
         .eq_filter(Book.publishedDate, exact_publishedDate)
         .gte_filter(Book.publishedDate, from_publishedDate)
@@ -58,6 +62,8 @@ async def books(_, info: GraphQLResolveInfo,
 @query.field("booksDeep")
 async def books_deep(_, info: GraphQLResolveInfo, 
                 ids: Optional[list[str]] = None,
+                titles: Optional[list[str]] = None,
+                like_title: Optional[str] = None,
                 publishers: Optional[list[str]] = None, 
                 exact_publishedDate: Optional[str] = None,
                 from_publishedDate: Optional[str] = None,
@@ -84,6 +90,8 @@ async def books_deep(_, info: GraphQLResolveInfo,
                 )
             )
         .con_filter(Book.id, ids)
+        .con_filter(Book.title, titles)
+        .like_filter(Book.title, like_title)
         .con_filter(Book.publisher, publishers)
         .eq_filter(Book.publishedDate, exact_publishedDate)
         .gte_filter(Book.publishedDate, from_publishedDate)
@@ -105,6 +113,7 @@ async def books_deep(_, info: GraphQLResolveInfo,
 @query.field("authors")
 async def authors(_, info: GraphQLResolveInfo,
                   names: Optional[list[str]] = None,
+                  like_name: Optional[str] = None,
                   offset: Optional[int] = None,
                   limit: Optional[int] = 10,
                   search: Optional[list[str]] = None):
@@ -118,6 +127,7 @@ async def authors(_, info: GraphQLResolveInfo,
                 )
             )
         .con_filter(Author.name, names)
+        .like_filter(Author.name, like_name)
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
     result = await db.execute(stmt())
@@ -127,6 +137,7 @@ async def authors(_, info: GraphQLResolveInfo,
 @query.field("categories")
 async def categories(_, info: GraphQLResolveInfo,
                   names: Optional[list[str]] = None,
+                  like_name: Optional[str] = None,
                   offset: Optional[int] = None,
                   limit: Optional[int] = 10,
                   search: Optional[list[str]] = None):
@@ -140,6 +151,7 @@ async def categories(_, info: GraphQLResolveInfo,
                 )
             )
         .con_filter(Category.name, names)
+        .like_filter(Author.name, like_name)
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
     result = await db.execute(stmt())
