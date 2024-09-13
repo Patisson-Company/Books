@@ -1,5 +1,6 @@
 from api.graphql.resolvers import resolvers
 from ariadne import load_schema_from_path, make_executable_schema
+from ariadne.asgi import GraphQL
 from core import config
 from db.base import get_session
 from fastapi import FastAPI, Request
@@ -40,8 +41,9 @@ async def graphql_route(request: Request):
         schema=schema, 
         session_gen=get_session()
     )
-    
-app.add_route("/graphql", graphql_route)   # type: ignore[reportArgumentType]
+
+graphql_app = GraphQL(schema, debug=True)
+app.add_route("/graphql", graphql_app)  # type: ignore[reportArgumentType]
 
 if __name__ == "__main__":
     import uvicorn

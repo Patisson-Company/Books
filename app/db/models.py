@@ -24,7 +24,7 @@ class Book(Base):
     __tablename__ = 'books'
     
     id = Column(String, primary_key=True, default=ulid)
-    google_id = Column(String, index=True)
+    google_id = Column(String, unique=True, index=True)
     title = Column(String, nullable=False, index=True)
     publisher = Column(String)
     publishedDate = Column(String)
@@ -64,7 +64,6 @@ class Review(Base):
     stars = Column(Integer, nullable=False)
     comment = Column(Text)
     actual = Column(Boolean, nullable=False, default=True)
-    
     
     @validates("stars")
     def validate_stars(self, key, stars):
