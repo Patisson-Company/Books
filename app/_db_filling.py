@@ -142,6 +142,7 @@ async def main(queries: Sequence):
     await _adding_books_by_categories()
     await filling_review()
     
+    
 if __name__ == "__main__":
     english_alphabet = string.ascii_lowercase
     russian_alphabet = 'абвгдеёжзийклмнопрстуфхцчшщьыъэюя'

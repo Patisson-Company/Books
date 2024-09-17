@@ -1,7 +1,7 @@
 from typing import Optional
 
 import patisson_errors
-from _books_filling import filling_db
+from _db_filling import filling_db
 from ariadne import MutationType, QueryType
 from db.models import Author, Book, Category, Review, UniquenessError
 from graphql import GraphQLResolveInfo
