@@ -1,9 +1,9 @@
 from typing import Optional
 
-import patisson_errors
 from _db_filling import filling_db
 from ariadne import MutationType, QueryType
-from db.models import Author, Book, Category, Review, UniquenessError
+from patisson_request.errors import ErrorCode, ErrorSchema, UniquenessError, ValidateError
+from db.models import Author, Book, Category, Review
 from graphql import GraphQLResolveInfo
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -113,7 +113,7 @@ async def books_deep(_, info: GraphQLResolveInfo,
 @query.field("authors")
 async def authors(_, info: GraphQLResolveInfo,
                   names: Optional[list[str]] = None,
-                  like_name: Optional[str] = None,
+                  like_names: Optional[str] = None,
                   offset: Optional[int] = None,
                   limit: Optional[int] = 10,
                   search: Optional[list[str]] = None):
@@ -127,7 +127,7 @@ async def authors(_, info: GraphQLResolveInfo,
                 )
             )
         .con_filter(Author.name, names)
-        .like_filter(Author.name, like_name)
+        .like_filter(Author.name, like_names)
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
     result = await db.execute(stmt())
@@ -242,27 +242,27 @@ async def create_review(_, info: GraphQLResolveInfo,
     
     except IntegrityError:
         await db.rollback()
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.ACCESS_ERROR,
             extra=f'The book ({book_id}) was not found'
         ).model_dump()]}
         
     except SQLAlchemyError as e:
         await db.rollback()
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.ACCESS_ERROR,
             extra=str(e)
         ).model_dump()]}
  
     except UniquenessError:
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.JWT_EXPIRED,
             extra=f'a review on this book ({book_id}) from this user ({user_id}) already exists'
         ).model_dump()]}
     
-    except ValueError as e:  # sqlalchemy model validators
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+    except ValidateError as e:
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.JWT_EXPIRED,
             extra=str(e)
         ).model_dump()]}
         
@@ -296,27 +296,27 @@ async def update_review(_, info: GraphQLResolveInfo,
     
     except IntegrityError:
         await db.rollback()
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.ACCESS_ERROR,
             extra=f'The book ({book_id}) was not found'
         ).model_dump()]}
         
     except SQLAlchemyError as e:
         await db.rollback()
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.ACCESS_ERROR,
             extra=str(e)
         ).model_dump()]}
  
     except UniquenessError:
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.JWT_EXPIRED,
             extra=f'a review on this book ({book_id}) from this user ({user_id}) does not exist or is not active'
         ).model_dump()]}
     
-    except ValueError as e:  # sqlalchemy model validators
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+    except ValidateError as e:
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.JWT_EXPIRED,
             extra=str(e)
         ).model_dump()]}
         
@@ -344,27 +344,27 @@ async def delete_review(_, info: GraphQLResolveInfo,
     
     except IntegrityError:
         await db.rollback()
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.ACCESS_ERROR,
             extra=f'The book ({book_id}) was not found'
         ).model_dump()]}
         
     except SQLAlchemyError as e:
         await db.rollback()
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.ACCESS_ERROR,
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.ACCESS_ERROR,
             extra=str(e)
         ).model_dump()]}
  
     except UniquenessError:
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.JWT_EXPIRED,
             extra=f'a review on this book ({book_id}) from this user ({user_id}) does not exist or is not active'
         ).model_dump()]}
     
-    except ValueError as e:  # sqlalchemy model validators
-        return {"success": False, "errors": [patisson_errors.ErrorSchema(
-            error=patisson_errors.ErrorCode.JWT_EXPIRED,
+    except ValidateError as e:
+        return {"success": False, "errors": [ErrorSchema(
+            error=ErrorCode.JWT_EXPIRED,
             extra=str(e)
         ).model_dump()]}
 

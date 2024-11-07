@@ -4,12 +4,13 @@ from asyncio import Queue
 from itertools import chain
 from typing import Optional, Sequence
 
-import aiohttp
+import httpx
 from db.base import get_session
 from db.models import *
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.exc import IntegrityError
+from config import SelfService
 
 URL = "https://www.googleapis.com/books/v1/volumes?q={}"
 
@@ -68,19 +69,19 @@ async def _add_book(session: AsyncSession, book_data: dict):
         pass
 
 
-async def _fetch_books_data(session: aiohttp.ClientSession, query: str):
+async def _fetch_books_data(client: httpx.AsyncClient, query: str):
     books_data = []
-    async with session.get(URL.format(query)) as response:
-        if response.status == 200:
-            result = await response.json()
-            if 'items' in result:
-                books_data.extend(result['items'])
+    response = await client.get(URL.format(query))
+    if response.status_code == 200:
+        result = response.json()
+        if 'items' in result:
+            books_data.extend(result['items'])
     return books_data
 
 
 async def _process_query(query: str, queue: Queue) -> None:
-    async with aiohttp.ClientSession() as client_session:
-        books_data = await _fetch_books_data(client_session, query)
+    async with httpx.AsyncClient() as client:
+        books_data = await _fetch_books_data(client, query)
         for book_data in books_data:
             await queue.put(book_data)
             
@@ -127,7 +128,7 @@ async def filling_db(queries: Sequence[str], session: Optional[AsyncSession] = N
 
 async def filling_review(session: Optional[AsyncSession] = None):
     async def body(session: AsyncSession):
-        pass  # !
+        ...
             
     if session:
         await body(session)  

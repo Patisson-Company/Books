@@ -46,7 +46,7 @@ type ReviewResponse {
 type Query {
     books(
         ids: [ID],
-        title: [String],
+        titles: [String],
         like_title: String,
         google_ids: [String],
         publishers: [String],

@@ -3,9 +3,7 @@ from sqlalchemy import (Boolean, Column, ForeignKey, Integer, String, Table,
                         Text)
 from sqlalchemy.orm import relationship, validates
 from ulid import ULID
-
-
-class UniquenessError(Exception): ...
+from patisson_request.errors import ValidateError
 
 def ulid() -> str:
     return str(ULID())
@@ -68,5 +66,5 @@ class Review(Base):
     @validates("stars")
     def validate_stars(self, key, stars):
         if not (stars >= 1 and stars <= 5):
-            raise ValueError(f'Invalid number of stars ({stars})')
+            raise ValidateError(f'Invalid number of stars ({stars})')
         return stars

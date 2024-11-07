@@ -1,3 +1,7 @@
+import asyncio
+from pathlib import Path
+from contextlib import asynccontextmanager
+
 import config
 from api import router
 from api.graphql.resolvers import resolvers
@@ -6,9 +10,15 @@ from fastapi import FastAPI
 from patisson_appLauncher.fastapi_app_launcher import UvicornFastapiAppLauncher
 
 
-app = FastAPI(title=config.SERVICE_NAME)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(config.SelfService.tokens_update_task())
+    yield
+    task.cancel()
+    await task
 
-
+app = FastAPI(title=config.SERVICE_NAME, lifespan=lifespan)
+    
 if __name__ == "__main__":
     app_launcher = UvicornFastapiAppLauncher(app, router,
                         service_name=config.SERVICE_NAME,
@@ -19,7 +29,8 @@ if __name__ == "__main__":
     app_launcher.add_async_ariadne_graphql_route(
         resolvers=resolvers, 
         session_gen=get_session,
-        debug=True
+        debug=True,
+        path_to_schema=str(Path(__file__).resolve().parent) + '/api/graphql/schema.graphql'
     )
-    app_launcher.include_router()
+    app_launcher.include_router(prefix=f'/{config.SERVICE_NAME}')
     app_launcher.app_run()
