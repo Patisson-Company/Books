@@ -1,6 +1,6 @@
 import asyncio
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import config
 from api import router
@@ -8,6 +8,7 @@ from api.graphql.resolvers import resolvers
 from db.base import get_session
 from fastapi import FastAPI
 from patisson_appLauncher.fastapi_app_launcher import UvicornFastapiAppLauncher
+from patisson_request.service_routes import BooksRoute
 
 
 @asynccontextmanager
@@ -18,11 +19,15 @@ async def lifespan(app: FastAPI):
     await task
 
 app = FastAPI(title=config.SERVICE_NAME, lifespan=lifespan)
-    
+
 if __name__ == "__main__":
     app_launcher = UvicornFastapiAppLauncher(app, router,
                         service_name=config.SERVICE_NAME,
                         host=config.SERVICE_HOST)
+    app_launcher.add_token_middleware(
+        config.SelfService.get_access_token,
+        excluded_paths=[f'/{BooksRoute.health().path}']
+        )
     app_launcher.add_sync_consul_health_path()
     app_launcher.consul_register()
     app_launcher.add_jaeger()

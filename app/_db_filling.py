@@ -1,19 +1,23 @@
 import asyncio
+import random
 import string
 from asyncio import Queue
 from itertools import chain
 from typing import Optional, Sequence
 
 import httpx
+from config import SelfService
 from db.base import get_session
-from db.models import *
+from db.models import Author, Book, Category, Review
+from faker import Faker
+from patisson_request.graphql.queries import QUser
+from patisson_request.service_routes import UsersRoute
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from config import SelfService
 
 URL = "https://www.googleapis.com/books/v1/volumes?q={}"
-
+fake = Faker()
 
 async def _add_author(session: AsyncSession, name: str):
     author = await session.get(Author, name)
@@ -67,6 +71,21 @@ async def _add_book(session: AsyncSession, book_data: dict):
         await session.commit()
     except IntegrityError:
         pass
+    
+
+async def _add_review(user_id: str, book_id: str, stars: int, 
+                      comment: str, actual: bool = True) -> Review:
+    async with get_session() as session:
+        review = Review(
+            user_id=user_id,
+            book_id=book_id,
+            stars=stars,
+            comment=comment,
+            actual=actual
+        )
+        session.add(review)
+        await session.commit()
+        return review
 
 
 async def _fetch_books_data(client: httpx.AsyncClient, query: str):
@@ -116,6 +135,35 @@ async def _adding_books_by_categories(session: Optional[AsyncSession] = None):
         await filling_db([f'subject:{category}' for category in categories])
         
 
+async def _filling_review(session: Optional[AsyncSession] = None):
+    async def body(session: AsyncSession):
+        users = await SelfService.post_request(
+            *-UsersRoute.graphql.users(fields=[QUser.id], limit=0)
+        )
+        result = await session.execute(select(Book.id))
+        books = result.scalars().unique().all()
+
+        tasks = [
+            _add_review(
+                user_id=user.id,
+                book_id=random.choice(books),
+                stars=random.randint(1, 5),
+                comment=fake.text(),
+                actual=True if random.randint(1, 10) > 8 else False
+            )
+            for user in users.body.data.users if random.randint(0, 1) != 0
+            for _ in range(random.randint(1, 5))
+        ]
+
+        await asyncio.gather(*tasks)
+
+    if session:
+        await body(session)
+    else:
+        async with get_session() as session:
+            await body(session)
+        
+
 async def filling_db(queries: Sequence[str], session: Optional[AsyncSession] = None):
     queue = Queue()
     tasks = [_process_query(query, queue) for query in queries]
@@ -126,22 +174,11 @@ async def filling_db(queries: Sequence[str], session: Optional[AsyncSession] = N
     await db_task
 
 
-async def filling_review(session: Optional[AsyncSession] = None):
-    async def body(session: AsyncSession):
-        ...
-            
-    if session:
-        await body(session)  
-    else:
-        async with get_session() as session:
-            await body(session)
-
-
 async def main(queries: Sequence):
     await filling_db(queries)
     await _adding_books_by_authors()
     await _adding_books_by_categories()
-    await filling_review()
+    await _filling_review()
     
     
 if __name__ == "__main__":

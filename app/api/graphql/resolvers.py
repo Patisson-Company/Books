@@ -2,15 +2,17 @@ from typing import Optional
 
 from _db_filling import filling_db
 from ariadne import MutationType, QueryType
-from patisson_request.errors import ErrorCode, ErrorSchema, UniquenessError, ValidateError
+from config import logger
 from db.models import Author, Book, Category, Review
 from graphql import GraphQLResolveInfo
+from patisson_graphql.selected_fields import selected_fields
+from patisson_graphql.stmt_filter import Stmt
+from patisson_request.errors import (ErrorCode, ErrorSchema, UniquenessError,
+                                     ValidateError)
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
-from patisson_graphql.stmt_filter import Stmt
-from patisson_graphql.selected_fields import selected_fields
 
 query = QueryType()
 mutation = MutationType()
@@ -55,6 +57,7 @@ async def books(_, info: GraphQLResolveInfo,
         .con_filter(Book.language, languages)
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
+    logger.info(stmt.log())
     result = await db.execute(stmt())
     return result.fetchall()
 
@@ -106,6 +109,7 @@ async def books_deep(_, info: GraphQLResolveInfo,
         .con_model_filter(Book.categories, categories)
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
+    logger.info(stmt.log())
     result = await db.execute(stmt())
     return result.scalars().unique().all()
 
@@ -130,6 +134,7 @@ async def authors(_, info: GraphQLResolveInfo,
         .like_filter(Author.name, like_names)
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
+    logger.info(stmt.log())
     result = await db.execute(stmt())
     return result.scalars().unique().all()
 
@@ -154,6 +159,7 @@ async def categories(_, info: GraphQLResolveInfo,
         .like_filter(Author.name, like_name)
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
+    logger.info(stmt.log())
     result = await db.execute(stmt())
     return result.scalars().unique().all()
 
@@ -181,6 +187,7 @@ async def reviews(_, info: GraphQLResolveInfo,
         .con_filter(Review.actual, [actual])
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
+    logger.info(stmt.log())
     result = await db.execute(stmt())
     return result.fetchall()
 
@@ -210,6 +217,7 @@ async def reviews_deep(_, info: GraphQLResolveInfo,
         .con_filter(Review.actual, [actual])
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
+    logger.info(stmt.log())
     result = await db.execute(stmt())
     return result.scalars().unique().all()
 
@@ -236,35 +244,45 @@ async def create_review(_, info: GraphQLResolveInfo,
         if result.scalars().all():
             raise UniquenessError
         
+        logger.info(stmt.log())
         db.add(new_review)
         await db.commit()
         return {"success": True}
     
     except IntegrityError:
         await db.rollback()
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.ACCESS_ERROR,
+        error = ErrorSchema(
+            error=ErrorCode.INVALID_PARAMETERS,
             extra=f'The book ({book_id}) was not found'
-        ).model_dump()]}
+        )
+        logger.info(error)
+        return {"success": False, 
+                "errors": error.model_dump()}
         
     except SQLAlchemyError as e:
         await db.rollback()
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.ACCESS_ERROR,
+        error = ErrorSchema(
+            error=ErrorCode.INVALID_PARAMETERS,
             extra=str(e)
-        ).model_dump()]}
- 
+        )
+        logger.info(error)
+        return {"success": False, "errors": error.model_dump()}
+
     except UniquenessError:
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.JWT_EXPIRED,
+        error = ErrorSchema(
+            error=ErrorCode.INVALID_PARAMETERS,
             extra=f'a review on this book ({book_id}) from this user ({user_id}) already exists'
-        ).model_dump()]}
-    
+        )
+        logger.info(error)
+        return {"success": False, "errors": error.model_dump()}
+
     except ValidateError as e:
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.JWT_EXPIRED,
+        error = ErrorSchema(
+            error=ErrorCode.VALIDATE_ERROR,
             extra=str(e)
-        ).model_dump()]}
+        )
+        logger.info(error)
+        return {"success": False, "errors": error.model_dump()}
         
 
 @mutation.field("updateReview")
@@ -296,29 +314,37 @@ async def update_review(_, info: GraphQLResolveInfo,
     
     except IntegrityError:
         await db.rollback()
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.ACCESS_ERROR,
+        error = ErrorSchema(
+            error=ErrorCode.INVALID_PARAMETERS,
             extra=f'The book ({book_id}) was not found'
-        ).model_dump()]}
-        
+        )
+        logger.info(error)
+        return {"success": False, "errors": error.model_dump()}
+
     except SQLAlchemyError as e:
         await db.rollback()
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.ACCESS_ERROR,
+        error = ErrorSchema(
+            error=ErrorCode.INVALID_PARAMETERS,
             extra=str(e)
-        ).model_dump()]}
- 
+        )
+        logger.info(error)
+        return {"success": False, "errors": error.model_dump()}
+
     except UniquenessError:
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.JWT_EXPIRED,
+        error = ErrorSchema(
+            error=ErrorCode.INVALID_PARAMETERS,
             extra=f'a review on this book ({book_id}) from this user ({user_id}) does not exist or is not active'
-        ).model_dump()]}
-    
+        )
+        logger.info(error)
+        return {"success": False, "errors": error.model_dump()}
+
     except ValidateError as e:
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.JWT_EXPIRED,
+        error = ErrorSchema(
+            error=ErrorCode.VALIDATE_ERROR,
             extra=str(e)
-        ).model_dump()]}
+        )
+        logger.info(error)
+        return {"success": False, "errors": error.model_dump()}
         
 
 @mutation.field("deleteReview")
@@ -344,29 +370,37 @@ async def delete_review(_, info: GraphQLResolveInfo,
     
     except IntegrityError:
         await db.rollback()
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.ACCESS_ERROR,
+        error = ErrorSchema(
+            error=ErrorCode.INVALID_PARAMETERS,
             extra=f'The book ({book_id}) was not found'
-        ).model_dump()]}
-        
+        )
+        logger.info(error)
+        return {"success": False, "errors": [error.model_dump()]}
+
     except SQLAlchemyError as e:
         await db.rollback()
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.ACCESS_ERROR,
+        error = ErrorSchema(
+            error=ErrorCode.INVALID_PARAMETERS,
             extra=str(e)
-        ).model_dump()]}
- 
+        )
+        logger.info(error)
+        return {"success": False, "errors": [error.model_dump()]}
+
     except UniquenessError:
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.JWT_EXPIRED,
+        error = ErrorSchema(
+            error=ErrorCode.INVALID_PARAMETERS,
             extra=f'a review on this book ({book_id}) from this user ({user_id}) does not exist or is not active'
-        ).model_dump()]}
-    
+        )
+        logger.info(error)
+        return {"success": False, "errors": [error.model_dump()]}
+
     except ValidateError as e:
-        return {"success": False, "errors": [ErrorSchema(
-            error=ErrorCode.JWT_EXPIRED,
+        error = ErrorSchema(
+            error=ErrorCode.VALIDATE_ERROR,
             extra=str(e)
-        ).model_dump()]}
+        )
+        logger.info(error)
+        return {"success": False, "errors": [error.model_dump()]}
 
 
 resolvers = [query, mutation]
