@@ -1,24 +1,19 @@
-from typing import AsyncGenerator, Callable, Generic, Optional, TypeVar
+from typing import Optional
 
 from _db_filling import filling_db
 from api.graphql.deps import verify_tokens_decorator
 from ariadne import MutationType, QueryType
 from config import logger
 from db.models import Author, Book, Category, Review
-from fastapi import Request
 from graphql import GraphQLResolveInfo
-from patisson_graphql.framework_utils.fastapi import (GraphQLContext,
-                                                      ServicePayloadTypeVar,
-                                                      UserPayloadTypeVar)
+from patisson_graphql.framework_utils.fastapi import GraphQLContext
 from patisson_graphql.selected_fields import selected_fields
 from patisson_graphql.stmt_filter import Stmt
 from patisson_request.errors import (ErrorCode, ErrorSchema, UniquenessError,
                                      ValidateError)
 from patisson_request.jwt_tokens import (ClientAccessTokenPayload,
                                          ServiceAccessTokenPayload)
-from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 

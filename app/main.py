@@ -20,7 +20,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=config.SERVICE_NAME, lifespan=lifespan)
 
-
 if __name__ == "__main__":
     app_launcher = UvicornFastapiAppLauncher(app, router,
                         service_name=config.SERVICE_NAME,
