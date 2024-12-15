@@ -13,7 +13,6 @@ SERVICE_HOST: str = os.getenv("SERVICE_HOST_")  # type: ignore[reportArgumentTyp
 
 DATABASE_URL: str = os.getenv("DATABASE_URL")  # type: ignore[reportArgumentType]
 
-
 file_handler = logging.FileHandler(os.path.join(root_path, f'{SERVICE_NAME}.log'))
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(logging.Formatter(

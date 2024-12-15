@@ -1,14 +1,22 @@
-from typing import Optional
+from typing import AsyncGenerator, Callable, Generic, Optional, TypeVar
 
 from _db_filling import filling_db
+from api.graphql.deps import verify_tokens_decorator
 from ariadne import MutationType, QueryType
 from config import logger
 from db.models import Author, Book, Category, Review
+from fastapi import Request
 from graphql import GraphQLResolveInfo
+from patisson_graphql.framework_utils.fastapi import (GraphQLContext,
+                                                      ServicePayloadTypeVar,
+                                                      UserPayloadTypeVar)
 from patisson_graphql.selected_fields import selected_fields
 from patisson_graphql.stmt_filter import Stmt
 from patisson_request.errors import (ErrorCode, ErrorSchema, UniquenessError,
                                      ValidateError)
+from patisson_request.jwt_tokens import (ClientAccessTokenPayload,
+                                         ServiceAccessTokenPayload)
+from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -16,10 +24,11 @@ from sqlalchemy.orm import joinedload
 
 query = QueryType()
 mutation = MutationType()
-
-
+        
 @query.field("books")
+@verify_tokens_decorator
 async def books(_, info: GraphQLResolveInfo, 
+                service_token: ServiceAccessTokenPayload,
                 ids: Optional[list[str]] = None,
                 titles: Optional[list[str]] = None,
                 like_title: Optional[str] = None,
@@ -36,8 +45,8 @@ async def books(_, info: GraphQLResolveInfo,
                 offset: Optional[int] = None,
                 limit: Optional[int] = 10,
                 search: Optional[list[str]] = None):
-    db: AsyncSession = info.context["db"]
-    if search: await filling_db(search, db)
+    context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
+    if search: await filling_db(search, context.db_session)
     stmt = (
         Stmt(
             select(*selected_fields(info, Book))
@@ -58,12 +67,14 @@ async def books(_, info: GraphQLResolveInfo,
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
     logger.info(stmt.log())
-    result = await db.execute(stmt())
+    result = await context.db_session.execute(stmt())
     return result.fetchall()
 
 
 @query.field("booksDeep")
+@verify_tokens_decorator
 async def books_deep(_, info: GraphQLResolveInfo, 
+                service_token: ServiceAccessTokenPayload,
                 ids: Optional[list[str]] = None,
                 titles: Optional[list[str]] = None,
                 like_title: Optional[str] = None,
@@ -82,8 +93,8 @@ async def books_deep(_, info: GraphQLResolveInfo,
                 offset: Optional[int] = None,
                 limit: Optional[int] = 10,
                 search: Optional[list[str]] = None):
-    db: AsyncSession = info.context["db"]
-    if search: await filling_db(search, db)
+    context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
+    if search: await filling_db(search, context.db_session)
     stmt = (
         Stmt(
             select(Book)
@@ -110,19 +121,21 @@ async def books_deep(_, info: GraphQLResolveInfo,
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
     logger.info(stmt.log())
-    result = await db.execute(stmt())
+    result = await context.db_session.execute(stmt())
     return result.scalars().unique().all()
 
 
 @query.field("authors")
+@verify_tokens_decorator
 async def authors(_, info: GraphQLResolveInfo,
+                  service_token: ServiceAccessTokenPayload,
                   names: Optional[list[str]] = None,
                   like_names: Optional[str] = None,
                   offset: Optional[int] = None,
                   limit: Optional[int] = 10,
                   search: Optional[list[str]] = None):
-    db: AsyncSession = info.context["db"]
-    if search: await filling_db(search, db)
+    context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
+    if search: await filling_db(search, context.db_session)
     stmt = (
         Stmt(
             select(Author)
@@ -135,19 +148,21 @@ async def authors(_, info: GraphQLResolveInfo,
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
     logger.info(stmt.log())
-    result = await db.execute(stmt())
+    result = await context.db_session.execute(stmt())
     return result.scalars().unique().all()
 
 
 @query.field("categories")
+@verify_tokens_decorator
 async def categories(_, info: GraphQLResolveInfo,
+                  service_token: ServiceAccessTokenPayload,
                   names: Optional[list[str]] = None,
                   like_name: Optional[str] = None,
                   offset: Optional[int] = None,
                   limit: Optional[int] = 10,
                   search: Optional[list[str]] = None):
-    db: AsyncSession = info.context["db"]
-    if search: await filling_db(search, db)
+    context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
+    if search: await filling_db(search, context.db_session)
     stmt = (
         Stmt(
             select(Category)
@@ -160,12 +175,14 @@ async def categories(_, info: GraphQLResolveInfo,
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
     logger.info(stmt.log())
-    result = await db.execute(stmt())
+    result = await context.db_session.execute(stmt())
     return result.scalars().unique().all()
 
 
 @query.field("reviews")
+@verify_tokens_decorator
 async def reviews(_, info: GraphQLResolveInfo, 
+                service_token: ServiceAccessTokenPayload,
                 ids: Optional[list[str]] = None,
                 user_ids: Optional[list[str]] = None,
                 from_stars: Optional[int] = None,
@@ -174,7 +191,7 @@ async def reviews(_, info: GraphQLResolveInfo,
                 actual: Optional[bool] = True,
                 offset: Optional[int] = None,
                 limit: Optional[int] = 10):
-    db: AsyncSession = info.context["db"]
+    context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
     stmt = (
         Stmt(
             select(*selected_fields(info, Review))
@@ -188,12 +205,14 @@ async def reviews(_, info: GraphQLResolveInfo,
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
     logger.info(stmt.log())
-    result = await db.execute(stmt())
+    result = await context.db_session.execute(stmt())
     return result.fetchall()
 
 
 @query.field("reviewsDeep")
+@verify_tokens_decorator
 async def reviews_deep(_, info: GraphQLResolveInfo, 
+                service_token: ServiceAccessTokenPayload,
                 ids: Optional[list[str]] = None,
                 user_ids: Optional[list[str]] = None,
                 from_stars: Optional[int] = None,
@@ -203,7 +222,7 @@ async def reviews_deep(_, info: GraphQLResolveInfo,
                 actual: Optional[bool] = True,
                 offset: Optional[int] = None,
                 limit: Optional[int] = 10):
-    db: AsyncSession = info.context["db"]
+    context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
     stmt = (
         Stmt(
             select(Review)
@@ -218,17 +237,20 @@ async def reviews_deep(_, info: GraphQLResolveInfo,
         .offset(offset).limit(limit).ordered_by(Book.id)
     )
     logger.info(stmt.log())
-    result = await db.execute(stmt())
+    result = await context.db_session.execute(stmt())
     return result.scalars().unique().all()
 
 
 @mutation.field("createReview")
+@verify_tokens_decorator
 async def create_review(_, info: GraphQLResolveInfo, 
-                        user_id: str, book_id: str, stars: int, 
+                        service_token: ServiceAccessTokenPayload,
+                        client_token: ClientAccessTokenPayload,
+                        book_id: str, stars: int, 
                         comment: Optional[str] = None):
-    db: AsyncSession = info.context["db"]
+    context: GraphQLContext[ServiceAccessTokenPayload, ClientAccessTokenPayload] = info.context
     try:
-        new_review = Review(user_id=user_id, book_id=book_id, 
+        new_review = Review(user_id=client_token.sub, book_id=book_id, 
                             stars=stars, comment=comment)
         
         # checking the uniqueness of the review
@@ -236,21 +258,21 @@ async def create_review(_, info: GraphQLResolveInfo,
             Stmt(
                 select(Review)
                 )
-            .con_filter(Review.user_id, [user_id])
+            .con_filter(Review.user_id, [client_token.sub])
             .con_filter(Review.book_id, [book_id])
             .con_filter(Review.actual, [True])
         )
-        result = await db.execute(stmt())
+        result = await context.db_session.execute(stmt())
         if result.scalars().all():
             raise UniquenessError
         
         logger.info(stmt.log())
-        db.add(new_review)
-        await db.commit()
+        context.db_session.add(new_review)
+        await context.db_session.commit()
         return {"success": True}
     
     except IntegrityError:
-        await db.rollback()
+        await context.db_session.rollback()
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
             extra=f'The book ({book_id}) was not found'
@@ -260,7 +282,7 @@ async def create_review(_, info: GraphQLResolveInfo,
                 "errors": error.model_dump()}
         
     except SQLAlchemyError as e:
-        await db.rollback()
+        await context.db_session.rollback()
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
             extra=str(e)
@@ -271,7 +293,7 @@ async def create_review(_, info: GraphQLResolveInfo,
     except UniquenessError:
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
-            extra=f'a review on this book ({book_id}) from this user ({user_id}) already exists'
+            extra=f'a review on this book ({book_id}) from this user ({client_token.sub}) already exists'
         )
         logger.info(error)
         return {"success": False, "errors": error.model_dump()}
@@ -286,34 +308,37 @@ async def create_review(_, info: GraphQLResolveInfo,
         
 
 @mutation.field("updateReview")
+@verify_tokens_decorator
 async def update_review(_, info: GraphQLResolveInfo, 
-                        user_id: str, book_id: str, stars: int, 
+                        service_token: ServiceAccessTokenPayload,
+                        client_token: ClientAccessTokenPayload,
+                        book_id: str, stars: int, 
                         comment: Optional[str] = None):
-    db: AsyncSession = info.context["db"]
+    context: GraphQLContext[ServiceAccessTokenPayload, ClientAccessTokenPayload] = info.context
     try:
-        new_review = Review(user_id=user_id, book_id=book_id, 
+        new_review = Review(user_id=client_token.sub, book_id=book_id, 
                             stars=stars, comment=comment)
         
         stmt = (
             Stmt(
                 select(Review)
                 )
-            .con_filter(Review.user_id, [user_id])
+            .con_filter(Review.user_id, [client_token.sub])
             .con_filter(Review.book_id, [book_id])
             .con_filter(Review.actual, [True])
         )
-        result = await db.execute(stmt())
+        result = await context.db_session.execute(stmt())
         not_actual_review = result.scalar_one_or_none()
         if not not_actual_review:
             raise UniquenessError
         not_actual_review.actual = False
         
-        db.add(new_review)        
-        await db.commit()
+        context.db_session.add(new_review)        
+        await context.db_session.commit()
         return {"success": True}
     
     except IntegrityError:
-        await db.rollback()
+        await context.db_session.rollback()
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
             extra=f'The book ({book_id}) was not found'
@@ -322,7 +347,7 @@ async def update_review(_, info: GraphQLResolveInfo,
         return {"success": False, "errors": error.model_dump()}
 
     except SQLAlchemyError as e:
-        await db.rollback()
+        await context.db_session.rollback()
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
             extra=str(e)
@@ -333,7 +358,7 @@ async def update_review(_, info: GraphQLResolveInfo,
     except UniquenessError:
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
-            extra=f'a review on this book ({book_id}) from this user ({user_id}) does not exist or is not active'
+            extra=f'a review on this book ({book_id}) from this user ({client_token.sub}) does not exist or is not active'
         )
         logger.info(error)
         return {"success": False, "errors": error.model_dump()}
@@ -348,28 +373,31 @@ async def update_review(_, info: GraphQLResolveInfo,
         
 
 @mutation.field("deleteReview")
+@verify_tokens_decorator
 async def delete_review(_, info: GraphQLResolveInfo, 
-                        user_id: str, book_id: str,):
-    db: AsyncSession = info.context["db"]
+                        service_token: ServiceAccessTokenPayload,
+                        client_token: ClientAccessTokenPayload,
+                        book_id: str):
+    context: GraphQLContext[ServiceAccessTokenPayload, ClientAccessTokenPayload] = info.context
     try:        
         stmt = (
             Stmt(
                 select(Review)
                 )
-            .con_filter(Review.user_id, [user_id])
+            .con_filter(Review.user_id, [client_token.sub])
             .con_filter(Review.book_id, [book_id])
             .con_filter(Review.actual, [True])
         )
-        result = await db.execute(stmt())
+        result = await context.db_session.execute(stmt())
         not_actual_review = result.scalar_one_or_none()
         if not not_actual_review:
             raise UniquenessError
         not_actual_review.actual = False
-        await db.commit()
+        await context.db_session.commit()
         return {"success": True}
     
     except IntegrityError:
-        await db.rollback()
+        await context.db_session.rollback()
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
             extra=f'The book ({book_id}) was not found'
@@ -378,7 +406,7 @@ async def delete_review(_, info: GraphQLResolveInfo,
         return {"success": False, "errors": [error.model_dump()]}
 
     except SQLAlchemyError as e:
-        await db.rollback()
+        await context.db_session.rollback()
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
             extra=str(e)
@@ -389,7 +417,7 @@ async def delete_review(_, info: GraphQLResolveInfo,
     except UniquenessError:
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
-            extra=f'a review on this book ({book_id}) from this user ({user_id}) does not exist or is not active'
+            extra=f'a review on this book ({book_id}) from this user ({client_token.sub}) does not exist or is not active'
         )
         logger.info(error)
         return {"success": False, "errors": [error.model_dump()]}

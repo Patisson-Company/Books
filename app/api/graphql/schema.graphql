@@ -127,21 +127,18 @@ type Query {
 
 type Mutation {
     createReview(
-        user_id: String!, 
         book_id: ID!, 
         stars: Int!, 
         comment: String
     ): ReviewResponse
 
     updateReview(
-        user_id: String!, 
         book_id: ID!, 
         stars: Int!, 
         comment: String
     ): ReviewResponse
 
     deleteReview(
-        user_id: String!, 
         book_id: ID!
     ): ReviewResponse
 }
