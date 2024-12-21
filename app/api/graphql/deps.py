@@ -1,6 +1,6 @@
 """
 This module contains functions and decorators for verifying service and client tokens
-in GraphQL requests. It integrates OpenTelemetry tracing and handles errors related 
+in GraphQL requests. It integrates OpenTelemetry tracing and handles errors related
 to invalid or missing tokens.
 
 Functions:
@@ -28,6 +28,7 @@ from patisson_request.jwt_tokens import (ClientAccessTokenPayload,
 security = HTTPBearer()
 tracer = trace.get_tracer(__name__)
 
+
 @dep_opentelemetry_service_decorator(tracer)
 async def verify_service_token(context: GraphQLContext) -> ServiceAccessTokenPayload:
     """
@@ -47,22 +48,22 @@ async def verify_service_token(context: GraphQLContext) -> ServiceAccessTokenPay
     """
     try:
         token_header = context.request.headers.get("Authorization")
-        if not token_header: 
+        if not token_header:
             raise InvalidJWT(error=ErrorSchema(
                 error=ErrorCode.JWT_INVALID,
                 extra='The server token is incorrect (missing or empty)'
             ))
         payload = await verify_service_token_dep(
-            self_service=config.SelfService, 
+            self_service=config.SelfService,
             access_token=config.SelfService.extract_token_from_header(token_header)[1:]
-            )
+        )
     except InvalidJWT as e:
         raise GraphQLError(
             message=str(e.error_schema.error),
             extensions={
                 "details": e.error_schema.extra,
             },
-        )
+        ) from e
     return payload
 
 
@@ -85,25 +86,25 @@ async def verify_client_token(context: GraphQLContext) -> ClientAccessTokenPaylo
     """
     try:
         token = context.request.headers.get("X-Client-Token")
-        if not token: 
+        if not token:
             raise InvalidJWT(error=ErrorSchema(
                 error=ErrorCode.CLIENT_JWT_INVALID,
                 extra='The server token is incorrect (missing or empty)'
             ))
         payload = await verify_client_token_dep(
-            self_service=config.SelfService, 
+            self_service=config.SelfService,
             access_token=token
-            )
+        )
     except InvalidJWT as e:
         raise GraphQLError(
             message=str(e.error_schema.error),
             extensions={
                 "details": e.error_schema.extra,
             },
-        )
+        ) from e
     return payload
-        
-        
+
+
 def verify_tokens_decorator(func):
     """
     A decorator that verifies service and client tokens before executing the GraphQL resolver.
@@ -119,16 +120,16 @@ def verify_tokens_decorator(func):
         'user_token' arguments and automatically verifies the corresponding tokens before calling
         the resolver. The verified tokens are passed to the resolver as arguments.
     """
-    
+
     @wraps(func)
     async def wrapper(root, info: GraphQLResolveInfo, **kwargs):
-        func_signature_arguments = [param.name for param in 
+        func_signature_arguments = [param.name for param in
                                     inspect.signature(func).parameters.values()]
         func_kwargs = {}
-        if (service:='service_token') in func_signature_arguments: 
+        if (service := 'service_token') in func_signature_arguments:
             func_kwargs[service] = await verify_service_token(info.context)
-        if (user:='client_token') in func_signature_arguments: 
+        if (user := 'client_token') in func_signature_arguments:
             func_kwargs[user] = await verify_client_token(info.context)
         return await func(root, info, **func_kwargs, **kwargs)
-    
+
     return wrapper

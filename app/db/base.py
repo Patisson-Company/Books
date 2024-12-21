@@ -16,11 +16,13 @@ async_session = sessionmaker(  # type: ignore[reportCallIssue]
     expire_on_commit=False
 )
 
+
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:  # type: ignore[reportGeneralTypeIssues]
         yield session
-        
+
+
 def _db_init():
     async def create_tables():
         async with engine.begin() as conn:

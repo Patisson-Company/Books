@@ -127,14 +127,14 @@ type Query {
 
 type Mutation {
     createReview(
-        book_id: ID!, 
-        stars: Int!, 
+        book_id: ID!,
+        stars: Int!,
         comment: String
     ): ReviewResponse
 
     updateReview(
-        book_id: ID!, 
-        stars: Int!, 
+        book_id: ID!,
+        stars: Int!,
         comment: String
     ): ReviewResponse
 

@@ -19,15 +19,16 @@ from sqlalchemy.orm import joinedload
 
 query = QueryType()
 mutation = MutationType()
-        
+
+
 @query.field("books")
 @verify_tokens_decorator
-async def books(_, info: GraphQLResolveInfo, 
+async def books(_, info: GraphQLResolveInfo,
                 service_token: ServiceAccessTokenPayload,
                 ids: Optional[list[str]] = None,
                 titles: Optional[list[str]] = None,
                 like_title: Optional[str] = None,
-                publishers: Optional[list[str]] = None, 
+                publishers: Optional[list[str]] = None,
                 exact_publishedDate: Optional[str] = None,
                 from_publishedDate: Optional[str] = None,
                 before_publishedDate: Optional[str] = None,
@@ -41,11 +42,12 @@ async def books(_, info: GraphQLResolveInfo,
                 limit: Optional[int] = 10,
                 search: Optional[list[str]] = None):
     context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
-    if search: await filling_db(search, context.db_session)
+    if search:
+        await filling_db(search, context.db_session)
     stmt = (
         Stmt(
             select(*selected_fields(info, Book))
-            )
+        )
         .con_filter(Book.id, ids)
         .con_filter(Book.title, titles)
         .like_filter(Book.title, like_title)
@@ -68,36 +70,37 @@ async def books(_, info: GraphQLResolveInfo,
 
 @query.field("booksDeep")
 @verify_tokens_decorator
-async def books_deep(_, info: GraphQLResolveInfo, 
-                service_token: ServiceAccessTokenPayload,
-                ids: Optional[list[str]] = None,
-                titles: Optional[list[str]] = None,
-                like_title: Optional[str] = None,
-                publishers: Optional[list[str]] = None, 
-                exact_publishedDate: Optional[str] = None,
-                from_publishedDate: Optional[str] = None,
-                before_publishedDate: Optional[str] = None,
-                like_description: Optional[str] = None,
-                exact_pageCount: Optional[int] = None,
-                from_pageCount: Optional[int] = None,
-                before_pageCount: Optional[int] = None,
-                maturityRaiting: Optional[str] = None,
-                languages: Optional[list[str]] = None,
-                authors: Optional[list[str]] = None,
-                categories: Optional[list[str]] = None,
-                offset: Optional[int] = None,
-                limit: Optional[int] = 10,
-                search: Optional[list[str]] = None):
+async def books_deep(_, info: GraphQLResolveInfo,
+                     service_token: ServiceAccessTokenPayload,
+                     ids: Optional[list[str]] = None,
+                     titles: Optional[list[str]] = None,
+                     like_title: Optional[str] = None,
+                     publishers: Optional[list[str]] = None,
+                     exact_publishedDate: Optional[str] = None,
+                     from_publishedDate: Optional[str] = None,
+                     before_publishedDate: Optional[str] = None,
+                     like_description: Optional[str] = None,
+                     exact_pageCount: Optional[int] = None,
+                     from_pageCount: Optional[int] = None,
+                     before_pageCount: Optional[int] = None,
+                     maturityRaiting: Optional[str] = None,
+                     languages: Optional[list[str]] = None,
+                     authors: Optional[list[str]] = None,
+                     categories: Optional[list[str]] = None,
+                     offset: Optional[int] = None,
+                     limit: Optional[int] = 10,
+                     search: Optional[list[str]] = None):
     context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
-    if search: await filling_db(search, context.db_session)
+    if search:
+        await filling_db(search, context.db_session)
     stmt = (
         Stmt(
             select(Book)
             .options(
                 joinedload(Book.authors),
                 joinedload(Book.categories)
-                )
             )
+        )
         .con_filter(Book.id, ids)
         .con_filter(Book.title, titles)
         .like_filter(Book.title, like_title)
@@ -130,14 +133,15 @@ async def authors(_, info: GraphQLResolveInfo,
                   limit: Optional[int] = 10,
                   search: Optional[list[str]] = None):
     context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
-    if search: await filling_db(search, context.db_session)
+    if search:
+        await filling_db(search, context.db_session)
     stmt = (
         Stmt(
             select(Author)
             .options(
                 joinedload(Author.books)
-                )
             )
+        )
         .con_filter(Author.name, names)
         .like_filter(Author.name, like_names)
         .offset(offset).limit(limit).ordered_by(Book.id)
@@ -150,21 +154,22 @@ async def authors(_, info: GraphQLResolveInfo,
 @query.field("categories")
 @verify_tokens_decorator
 async def categories(_, info: GraphQLResolveInfo,
-                  service_token: ServiceAccessTokenPayload,
-                  names: Optional[list[str]] = None,
-                  like_name: Optional[str] = None,
-                  offset: Optional[int] = None,
-                  limit: Optional[int] = 10,
-                  search: Optional[list[str]] = None):
+                     service_token: ServiceAccessTokenPayload,
+                     names: Optional[list[str]] = None,
+                     like_name: Optional[str] = None,
+                     offset: Optional[int] = None,
+                     limit: Optional[int] = 10,
+                     search: Optional[list[str]] = None):
     context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
-    if search: await filling_db(search, context.db_session)
+    if search:
+        await filling_db(search, context.db_session)
     stmt = (
         Stmt(
             select(Category)
             .options(
                 joinedload(Category.books)
-                )
             )
+        )
         .con_filter(Category.name, names)
         .like_filter(Author.name, like_name)
         .offset(offset).limit(limit).ordered_by(Book.id)
@@ -176,21 +181,21 @@ async def categories(_, info: GraphQLResolveInfo,
 
 @query.field("reviews")
 @verify_tokens_decorator
-async def reviews(_, info: GraphQLResolveInfo, 
-                service_token: ServiceAccessTokenPayload,
-                ids: Optional[list[str]] = None,
-                user_ids: Optional[list[str]] = None,
-                from_stars: Optional[int] = None,
-                before_stars: Optional[int] = None,
-                comment: Optional[str] = None,
-                actual: Optional[bool] = True,
-                offset: Optional[int] = None,
-                limit: Optional[int] = 10):
+async def reviews(_, info: GraphQLResolveInfo,
+                  service_token: ServiceAccessTokenPayload,
+                  ids: Optional[list[str]] = None,
+                  user_ids: Optional[list[str]] = None,
+                  from_stars: Optional[int] = None,
+                  before_stars: Optional[int] = None,
+                  comment: Optional[str] = None,
+                  actual: Optional[bool] = True,
+                  offset: Optional[int] = None,
+                  limit: Optional[int] = 10):
     context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
     stmt = (
         Stmt(
             select(*selected_fields(info, Review))
-            )
+        )
         .con_filter(Review.id, ids)
         .con_filter(Review.user_id, user_ids)
         .gte_filter(Review.stars, from_stars)
@@ -206,22 +211,22 @@ async def reviews(_, info: GraphQLResolveInfo,
 
 @query.field("reviewsDeep")
 @verify_tokens_decorator
-async def reviews_deep(_, info: GraphQLResolveInfo, 
-                service_token: ServiceAccessTokenPayload,
-                ids: Optional[list[str]] = None,
-                user_ids: Optional[list[str]] = None,
-                from_stars: Optional[int] = None,
-                before_stars: Optional[int] = None,
-                comment: Optional[str] = None,
-                books: Optional[list[str]] = None,
-                actual: Optional[bool] = True,
-                offset: Optional[int] = None,
-                limit: Optional[int] = 10):
+async def reviews_deep(_, info: GraphQLResolveInfo,
+                       service_token: ServiceAccessTokenPayload,
+                       ids: Optional[list[str]] = None,
+                       user_ids: Optional[list[str]] = None,
+                       from_stars: Optional[int] = None,
+                       before_stars: Optional[int] = None,
+                       comment: Optional[str] = None,
+                       books: Optional[list[str]] = None,
+                       actual: Optional[bool] = True,
+                       offset: Optional[int] = None,
+                       limit: Optional[int] = 10):
     context: GraphQLContext[ServiceAccessTokenPayload, None] = info.context
     stmt = (
         Stmt(
             select(Review)
-            )
+        )
         .con_filter(Review.id, ids)
         .con_filter(Review.user_id, user_ids)
         .gte_filter(Review.stars, from_stars)
@@ -238,21 +243,21 @@ async def reviews_deep(_, info: GraphQLResolveInfo,
 
 @mutation.field("createReview")
 @verify_tokens_decorator
-async def create_review(_, info: GraphQLResolveInfo, 
+async def create_review(_, info: GraphQLResolveInfo,
                         service_token: ServiceAccessTokenPayload,
                         client_token: ClientAccessTokenPayload,
-                        book_id: str, stars: int, 
+                        book_id: str, stars: int,
                         comment: Optional[str] = None):
     context: GraphQLContext[ServiceAccessTokenPayload, ClientAccessTokenPayload] = info.context
     try:
-        new_review = Review(user_id=client_token.sub, book_id=book_id, 
+        new_review = Review(user_id=client_token.sub, book_id=book_id,
                             stars=stars, comment=comment)
-        
+
         # checking the uniqueness of the review
         stmt = (
             Stmt(
                 select(Review)
-                )
+            )
             .con_filter(Review.user_id, [client_token.sub])
             .con_filter(Review.book_id, [book_id])
             .con_filter(Review.actual, [True])
@@ -260,12 +265,12 @@ async def create_review(_, info: GraphQLResolveInfo,
         result = await context.db_session.execute(stmt())
         if result.scalars().all():
             raise UniquenessError
-        
+
         logger.info(stmt.log())
         context.db_session.add(new_review)
         await context.db_session.commit()
         return {"success": True}
-    
+
     except IntegrityError:
         await context.db_session.rollback()
         error = ErrorSchema(
@@ -273,9 +278,9 @@ async def create_review(_, info: GraphQLResolveInfo,
             extra=f'The book ({book_id}) was not found'
         )
         logger.info(error)
-        return {"success": False, 
+        return {"success": False,
                 "errors": error.model_dump()}
-        
+
     except SQLAlchemyError as e:
         await context.db_session.rollback()
         error = ErrorSchema(
@@ -300,24 +305,24 @@ async def create_review(_, info: GraphQLResolveInfo,
         )
         logger.info(error)
         return {"success": False, "errors": error.model_dump()}
-        
+
 
 @mutation.field("updateReview")
 @verify_tokens_decorator
-async def update_review(_, info: GraphQLResolveInfo, 
+async def update_review(_, info: GraphQLResolveInfo,
                         service_token: ServiceAccessTokenPayload,
                         client_token: ClientAccessTokenPayload,
-                        book_id: str, stars: int, 
+                        book_id: str, stars: int,
                         comment: Optional[str] = None):
     context: GraphQLContext[ServiceAccessTokenPayload, ClientAccessTokenPayload] = info.context
     try:
-        new_review = Review(user_id=client_token.sub, book_id=book_id, 
+        new_review = Review(user_id=client_token.sub, book_id=book_id,
                             stars=stars, comment=comment)
-        
+
         stmt = (
             Stmt(
                 select(Review)
-                )
+            )
             .con_filter(Review.user_id, [client_token.sub])
             .con_filter(Review.book_id, [book_id])
             .con_filter(Review.actual, [True])
@@ -327,11 +332,11 @@ async def update_review(_, info: GraphQLResolveInfo,
         if not not_actual_review:
             raise UniquenessError
         not_actual_review.actual = False
-        
-        context.db_session.add(new_review)        
+
+        context.db_session.add(new_review)
         await context.db_session.commit()
         return {"success": True}
-    
+
     except IntegrityError:
         await context.db_session.rollback()
         error = ErrorSchema(
@@ -353,7 +358,10 @@ async def update_review(_, info: GraphQLResolveInfo,
     except UniquenessError:
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
-            extra=f'a review on this book ({book_id}) from this user ({client_token.sub}) does not exist or is not active'
+            extra=(
+                f'a review on this book ({book_id}) from this user '
+                f'({client_token.sub}) does not exist or is not active'
+            )
         )
         logger.info(error)
         return {"success": False, "errors": error.model_dump()}
@@ -365,20 +373,20 @@ async def update_review(_, info: GraphQLResolveInfo,
         )
         logger.info(error)
         return {"success": False, "errors": error.model_dump()}
-        
+
 
 @mutation.field("deleteReview")
 @verify_tokens_decorator
-async def delete_review(_, info: GraphQLResolveInfo, 
+async def delete_review(_, info: GraphQLResolveInfo,
                         service_token: ServiceAccessTokenPayload,
                         client_token: ClientAccessTokenPayload,
                         book_id: str):
     context: GraphQLContext[ServiceAccessTokenPayload, ClientAccessTokenPayload] = info.context
-    try:        
+    try:
         stmt = (
             Stmt(
                 select(Review)
-                )
+            )
             .con_filter(Review.user_id, [client_token.sub])
             .con_filter(Review.book_id, [book_id])
             .con_filter(Review.actual, [True])
@@ -390,7 +398,7 @@ async def delete_review(_, info: GraphQLResolveInfo,
         not_actual_review.actual = False
         await context.db_session.commit()
         return {"success": True}
-    
+
     except IntegrityError:
         await context.db_session.rollback()
         error = ErrorSchema(
@@ -412,7 +420,8 @@ async def delete_review(_, info: GraphQLResolveInfo,
     except UniquenessError:
         error = ErrorSchema(
             error=ErrorCode.INVALID_PARAMETERS,
-            extra=f'a review on this book ({book_id}) from this user ({client_token.sub}) does not exist or is not active'
+            extra=(f'a review on this book ({book_id}) from this user '
+                   f'({client_token.sub}) does not exist or is not active')
         )
         logger.info(error)
         return {"success": False, "errors": [error.model_dump()]}
