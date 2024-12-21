@@ -56,7 +56,7 @@ async def _add_book(session: AsyncSession, book_data: dict):
             maturityRating=volume_info.get("maturityRating"),
             smallThumbnail=volume_info.get("imageLinks", {}).get("smallThumbnail"),
             thumbnail=volume_info.get("imageLinks", {}).get("thumbnail"),
-            language=volume_info.get("language")
+            language=volume_info.get("language"),
         )
 
         for author_name in volume_info.get("authors", []):
@@ -74,16 +74,9 @@ async def _add_book(session: AsyncSession, book_data: dict):
         pass
 
 
-async def _add_review(user_id: str, book_id: str, stars: int,
-                      comment: str, actual: bool = True) -> Review:
+async def _add_review(user_id: str, book_id: str, stars: int, comment: str, actual: bool = True) -> Review:
     async with get_session() as session:
-        review = Review(
-            user_id=user_id,
-            book_id=book_id,
-            stars=stars,
-            comment=comment,
-            actual=actual
-        )
+        review = Review(user_id=user_id, book_id=book_id, stars=stars, comment=comment, actual=actual)
         session.add(review)
         await session.commit()
         return review
@@ -94,8 +87,8 @@ async def _fetch_books_data(client: httpx.AsyncClient, query: str):
     response = await client.get(URL.format(query))
     if response.status_code == 200:
         result = response.json()
-        if 'items' in result:
-            books_data.extend(result['items'])
+        if "items" in result:
+            books_data.extend(result["items"])
     return books_data
 
 
@@ -126,21 +119,19 @@ async def _adding_books_by_authors(session: Optional[AsyncSession] = None):
     async with get_session() as session:
         result = await session.execute(select(Author.name))
         authors = result.scalars().unique().all()
-        await filling_db([f'inauthor:{author}' for author in authors])
+        await filling_db([f"inauthor:{author}" for author in authors])
 
 
 async def _adding_books_by_categories(session: Optional[AsyncSession] = None):
     async with get_session() as session:
         result = await session.execute(select(Category.name))
         categories = result.scalars().unique().all()
-        await filling_db([f'subject:{category}' for category in categories])
+        await filling_db([f"subject:{category}" for category in categories])
 
 
 async def _filling_review(session: Optional[AsyncSession] = None):
     async def body(session: AsyncSession):
-        users = await SelfService.post_request(
-            *-UsersRoute.graphql.users(fields=[QUser.id], limit=0)
-        )
+        users = await SelfService.post_request(*-UsersRoute.graphql.users(fields=[QUser.id], limit=0))
         result = await session.execute(select(Book.id))
         books = result.scalars().unique().all()
 
@@ -150,9 +141,10 @@ async def _filling_review(session: Optional[AsyncSession] = None):
                 book_id=random.choice(books),
                 stars=random.randint(1, 5),
                 comment=fake.text(),
-                actual=True if random.randint(1, 10) > 8 else False
+                actual=True if random.randint(1, 10) > 8 else False,
             )
-            for user in users.body.data.users if random.randint(0, 1) != 0
+            for user in users.body.data.users
+            if random.randint(0, 1) != 0
             for _ in range(random.randint(1, 5))
         ]
 
@@ -184,7 +176,7 @@ async def main(queries: Sequence):
 
 if __name__ == "__main__":
     english_alphabet = string.ascii_lowercase
-    russian_alphabet = 'абвгдеёжзийклмнопрстуфхцчшщьыъэюя'
-    numbers = '0123456789'
+    russian_alphabet = "абвгдеёжзийклмнопрстуфхцчшщьыъэюя"
+    numbers = "0123456789"
     queries = list(chain(english_alphabet, russian_alphabet, numbers))
     asyncio.run(main(queries))

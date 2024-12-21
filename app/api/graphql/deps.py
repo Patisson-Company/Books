@@ -1,6 +1,7 @@
 """
-This module contains functions and decorators for verifying service and client tokens
-in GraphQL requests. It integrates OpenTelemetry tracing and handles errors related
+This module contains functions and decorators for verifying service and client tokens in GraphQL requests.
+
+It integrates OpenTelemetry tracing and handles errors related
 to invalid or missing tokens.
 
 Functions:
@@ -17,13 +18,14 @@ from fastapi.security import HTTPBearer
 from graphql import GraphQLError, GraphQLResolveInfo
 from opentelemetry import trace
 from patisson_graphql.framework_utils.fastapi import GraphQLContext
-from patisson_request.depends import (dep_opentelemetry_client_decorator,
-                                      dep_opentelemetry_service_decorator,
-                                      verify_client_token_dep,
-                                      verify_service_token_dep)
+from patisson_request.depends import (
+    dep_opentelemetry_client_decorator,
+    dep_opentelemetry_service_decorator,
+    verify_client_token_dep,
+    verify_service_token_dep,
+)
 from patisson_request.errors import ErrorCode, ErrorSchema, InvalidJWT
-from patisson_request.jwt_tokens import (ClientAccessTokenPayload,
-                                         ServiceAccessTokenPayload)
+from patisson_request.jwt_tokens import ClientAccessTokenPayload, ServiceAccessTokenPayload
 
 security = HTTPBearer()
 tracer = trace.get_tracer(__name__)
@@ -32,7 +34,7 @@ tracer = trace.get_tracer(__name__)
 @dep_opentelemetry_service_decorator(tracer)
 async def verify_service_token(context: GraphQLContext) -> ServiceAccessTokenPayload:
     """
-    Verifies the service token from the request headers.
+    Verify the service token from the request headers.
 
     Args:
         context (GraphQLContext): The GraphQL context containing the request.
@@ -49,13 +51,14 @@ async def verify_service_token(context: GraphQLContext) -> ServiceAccessTokenPay
     try:
         token_header = context.request.headers.get("Authorization")
         if not token_header:
-            raise InvalidJWT(error=ErrorSchema(
-                error=ErrorCode.JWT_INVALID,
-                extra='The server token is incorrect (missing or empty)'
-            ))
+            raise InvalidJWT(
+                error=ErrorSchema(
+                    error=ErrorCode.JWT_INVALID, extra="The server token is incorrect (missing or empty)"
+                )
+            )
         payload = await verify_service_token_dep(
             self_service=config.SelfService,
-            access_token=config.SelfService.extract_token_from_header(token_header)[1:]
+            access_token=config.SelfService.extract_token_from_header(token_header)[1:],
         )
     except InvalidJWT as e:
         raise GraphQLError(
@@ -70,7 +73,7 @@ async def verify_service_token(context: GraphQLContext) -> ServiceAccessTokenPay
 @dep_opentelemetry_client_decorator(tracer)
 async def verify_client_token(context: GraphQLContext) -> ClientAccessTokenPayload:
     """
-    Verifies the client token from the request headers.
+    Verify the client token from the request headers.
 
     Args:
         context (GraphQLContext): The GraphQL context containing the request.
@@ -87,14 +90,13 @@ async def verify_client_token(context: GraphQLContext) -> ClientAccessTokenPaylo
     try:
         token = context.request.headers.get("X-Client-Token")
         if not token:
-            raise InvalidJWT(error=ErrorSchema(
-                error=ErrorCode.CLIENT_JWT_INVALID,
-                extra='The server token is incorrect (missing or empty)'
-            ))
-        payload = await verify_client_token_dep(
-            self_service=config.SelfService,
-            access_token=token
-        )
+            raise InvalidJWT(
+                error=ErrorSchema(
+                    error=ErrorCode.CLIENT_JWT_INVALID,
+                    extra="The server token is incorrect (missing or empty)",
+                )
+            )
+        payload = await verify_client_token_dep(self_service=config.SelfService, access_token=token)
     except InvalidJWT as e:
         raise GraphQLError(
             message=str(e.error_schema.error),
@@ -107,7 +109,7 @@ async def verify_client_token(context: GraphQLContext) -> ClientAccessTokenPaylo
 
 def verify_tokens_decorator(func):
     """
-    A decorator that verifies service and client tokens before executing the GraphQL resolver.
+    Verify service and client tokens before executing the GraphQL resolver.
 
     Args:
         func (Callable): The original GraphQL resolver function.
@@ -123,12 +125,11 @@ def verify_tokens_decorator(func):
 
     @wraps(func)
     async def wrapper(root, info: GraphQLResolveInfo, **kwargs):
-        func_signature_arguments = [param.name for param in
-                                    inspect.signature(func).parameters.values()]
+        func_signature_arguments = [param.name for param in inspect.signature(func).parameters.values()]
         func_kwargs = {}
-        if (service := 'service_token') in func_signature_arguments:
+        if (service := "service_token") in func_signature_arguments:
             func_kwargs[service] = await verify_service_token(info.context)
-        if (user := 'client_token') in func_signature_arguments:
+        if (user := "client_token") in func_signature_arguments:
             func_kwargs[user] = await verify_client_token(info.context)
         return await func(root, info, **func_kwargs, **kwargs)
 
