@@ -29,7 +29,7 @@ if __name__ == "__main__":
     )
     app_launcher.add_token_middleware(config.SelfService.get_access_token, excluded_paths=[health_path])
     app_launcher.add_sync_consul_health_path()
-    app_launcher.consul_register(health_path)
+    app_launcher.consul_register(check_path=health_path)
     app_launcher.add_jaeger()
     app_launcher.add_route(
         path="/graphql", endpoint=create_graphql_route(resolvers, get_session), methods=["POST"]

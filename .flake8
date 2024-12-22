@@ -1,5 +1,0 @@
-[flake8]
-max-line-length = 110
-required-plugins = flake8-bugbear,flake8-isort
-select = B,C,E,F,W,T4,I
-extend-select = B9

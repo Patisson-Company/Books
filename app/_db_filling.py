@@ -167,11 +167,12 @@ async def filling_db(queries: Sequence[str], session: Optional[AsyncSession] = N
     await db_task
 
 
-async def main(queries: Sequence):
+async def main(queries: Sequence, filling_review: bool = False):
+    if filling_review:
+        await _filling_review()
     await filling_db(queries)
     await _adding_books_by_authors()
     await _adding_books_by_categories()
-    await _filling_review()
 
 
 if __name__ == "__main__":
@@ -179,4 +180,17 @@ if __name__ == "__main__":
     russian_alphabet = "абвгдеёжзийклмнопрстуфхцчшщьыъэюя"
     numbers = "0123456789"
     queries = list(chain(english_alphabet, russian_alphabet, numbers))
-    asyncio.run(main(queries))
+
+    import sys
+
+    from db.base import _db_init
+    from db.models import *  # noqa: F401, F403
+
+    if len(sys.argv) > 1:
+        filling_review = sys.argv[1].lower() == 'filling_review'
+    else:
+        filling_review = False
+
+    _db_init()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main(queries, filling_review))

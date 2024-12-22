@@ -9,7 +9,7 @@ root_path = os.path.join(os.path.dirname(__file__), "..")
 load_dotenv(dotenv_path=os.path.join(root_path, ".env"))
 
 SERVICE_NAME = Service.BOOKS.value
-SERVICE_HOST: str = os.getenv("SERVICE_HOST_")  # type: ignore[reportArgumentType]
+SERVICE_HOST: str = os.getenv("SERVICE_HOST")  # type: ignore[reportArgumentType]
 
 DATABASE_URL: str = os.getenv("DATABASE_URL")  # type: ignore[reportArgumentType]
 
